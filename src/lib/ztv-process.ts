@@ -41,7 +41,10 @@ class ZtvProcessManager {
     }
 
     try {
-      this.process = Bun.spawn([this.ztvPath], {
+      // Use --workers 1 to run with a single worker thread
+      // This ensures tunnels and channels are on the same worker
+      // (required for RIST inputs to work with tunnel servers)
+      this.process = Bun.spawn([this.ztvPath, "--workers", "1"], {
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",
