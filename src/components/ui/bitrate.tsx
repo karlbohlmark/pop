@@ -15,6 +15,7 @@ interface BitRateProps {
  * @param compact - use shorter unit names
  */
 function formatBitRate(bps: number, compact: boolean = false): string {
+  if (bps == null || isNaN(bps)) return compact ? "0" : "0 bps";
   if (bps === 0) return compact ? "0" : "0 bps";
 
   const units = compact
