@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { BitRate, BitRatePair } from "@/components/ui/bitrate";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,7 @@ import { Trash2, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import type { Channel, InputStream, OutputStream } from "@/lib/types";
 import { InputFormSelector } from "@/components/inputs/InputFormSelector";
 import { OutputFormSelector } from "@/components/outputs/OutputFormSelector";
+import { useStatistics } from "@/hooks/useStatistics";
 
 interface ChannelCardProps {
   channel: Channel;
@@ -55,6 +57,20 @@ export function ChannelCard({ channel, onDelete, onAddInput, onAddOutput, onRemo
   const [outputDialogOpen, setOutputDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removingStream, setRemovingStream] = useState<number | null>(null);
+
+  const { bitrates } = useStatistics();
+
+  // Get bitrates for this channel
+  const channelBitrates = bitrates?.channels.find((c) => c.channelId === channel.channelId);
+  const streamBitrates = bitrates?.channelStreams.find((c) => c.channelId === channel.channelId);
+
+  const getInputBitrate = (streamId: number) => {
+    return streamBitrates?.inputs.find((s) => s.streamId === streamId)?.bitsPerSecond ?? 0;
+  };
+
+  const getOutputBitrate = (streamId: number) => {
+    return streamBitrates?.outputs.find((s) => s.streamId === streamId)?.bitsPerSecond ?? 0;
+  };
 
   const handleRemoveInput = async (streamId: number) => {
     setRemovingStream(streamId);
@@ -100,10 +116,19 @@ export function ChannelCard({ channel, onDelete, onAddInput, onAddOutput, onRemo
                 <CardDescription>{channel.description}</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {channel.bufferDurationMs}ms buffer
-              </Badge>
+            <div className="flex items-center gap-3">
+              {channelBitrates && (channelBitrates.inputBps > 0 || channelBitrates.outputBps > 0) ? (
+                <BitRatePair
+                  inBitsPerSecond={channelBitrates.inputBps}
+                  outBitsPerSecond={channelBitrates.outputBps}
+                  compact
+                  className="text-sm"
+                />
+              ) : (
+                <Badge variant="secondary">
+                  {channel.bufferDurationMs}ms buffer
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -138,16 +163,21 @@ export function ChannelCard({ channel, onDelete, onAddInput, onAddOutput, onRemo
                       <div className="flex items-center gap-2">
                         <InputTypeLabel type={input.type} />
                         <span>Stream {input.streamId}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">
                           {input.type === "rtp" && `${input.localIp}:${input.localPort}`}
                           {input.type === "rist" && `Tunnel ${input.tunnelId}`}
-                          {input.type === "rtp_generator" && `${input.targetBitrateBps ?? 5000000} bps`}
+                          {input.type === "rtp_generator" && `target ${((input.targetBitrateBps ?? 3000000) / 1000000).toFixed(1)} Mbps`}
                           {input.type === "from_channel" && `Channel ${input.sourceChannelId}`}
                           {input.type === "sdi" && `Device ${input.deviceIndex}`}
                           {input.type === "generator" && `${input.width ?? 1920}x${input.height ?? 1080}`}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <BitRate
+                          bitsPerSecond={getInputBitrate(input.streamId)}
+                          direction="in"
+                          compact
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -184,14 +214,19 @@ export function ChannelCard({ channel, onDelete, onAddInput, onAddOutput, onRemo
                       <div className="flex items-center gap-2">
                         <OutputTypeLabel type={output.type} />
                         <span>Stream {output.streamId}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">
                           {output.type === "rtp" && `${output.remoteIp}:${output.remotePort}`}
                           {output.type === "rist" && `${output.remoteIp}:${output.remotePort}`}
                           {output.type === "udp" && `${output.remoteIp}:${output.remotePort}`}
                           {output.type === "sdi" && `Device ${output.deviceIndex}`}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <BitRate
+                          bitsPerSecond={getOutputBitrate(output.streamId)}
+                          direction="out"
+                          compact
+                        />
                         <Button
                           variant="ghost"
                           size="sm"

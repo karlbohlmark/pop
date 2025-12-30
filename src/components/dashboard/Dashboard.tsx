@@ -1,18 +1,24 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BitRate, BitRatePair } from "@/components/ui/bitrate";
 import { useStatistics } from "@/hooks/useStatistics";
 import { useChannels } from "@/hooks/useChannels";
 import { useTunnels } from "@/hooks/useTunnels";
 import { useZtvStatus } from "@/hooks/useZtvStatus";
-import { Tv2, Cable, Activity, AlertCircle } from "lucide-react";
+import { Tv2, Cable, Activity, AlertCircle, ArrowDownUp } from "lucide-react";
 
 export function Dashboard() {
   const { status } = useZtvStatus();
-  const { statistics, loading: statsLoading, error: statsError } = useStatistics();
+  const { statistics, bitrates, loading: statsLoading, error: statsError } = useStatistics();
   const { channels } = useChannels();
   const { tunnels } = useTunnels();
 
   const isRunning = status?.running ?? false;
+
+  // Helper to get channel bitrates
+  const getChannelBitrates = (channelId: number) => {
+    return bitrates?.channels.find((c) => c.channelId === channelId);
+  };
 
   return (
     <div className="space-y-6">
@@ -37,6 +43,34 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Throughput</CardTitle>
+            <ArrowDownUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isRunning && bitrates ? (
+              <>
+                <div className="text-lg font-bold">
+                  <BitRatePair
+                    inBitsPerSecond={bitrates.totalInputBps}
+                    outBitsPerSecond={bitrates.totalOutputBps}
+                    compact
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total input / output
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-muted-foreground">—</div>
+                <p className="text-xs text-muted-foreground">Not running</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Channels</CardTitle>
             <Tv2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -45,19 +79,6 @@ export function Dashboard() {
             <p className="text-xs text-muted-foreground">
               {channels.reduce((acc, c) => acc + c.inputs.length, 0)} inputs,{" "}
               {channels.reduce((acc, c) => acc + c.outputs.length, 0)} outputs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tunnels</CardTitle>
-            <Cable className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tunnels.length}</div>
-            <p className="text-xs text-muted-foreground">
-              RIST tunnel connections
             </p>
           </CardContent>
         </Card>
@@ -106,20 +127,27 @@ export function Dashboard() {
                   <p className="text-sm text-red-500">{statsError}</p>
                 ) : statistics?.channels && statistics.channels.length > 0 ? (
                   <div className="space-y-4">
-                    {statistics.channels.map((ch) => (
-                      <div key={ch.channelId} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Channel {ch.channelId}</span>
-                          <Badge variant="outline">Active</Badge>
+                    {statistics.channels.map((ch) => {
+                      const chBitrates = getChannelBitrates(ch.channelId);
+                      return (
+                        <div key={ch.channelId} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">Channel {ch.channelId}</span>
+                            <BitRatePair
+                              inBitsPerSecond={chBitrates?.inputBps ?? 0}
+                              outBitsPerSecond={chBitrates?.outputBps ?? 0}
+                              compact
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                            <div>RTP Inputs: {ch.rtpInput.length}</div>
+                            <div>RTP Outputs: {ch.rtpOutput.length}</div>
+                            <div>RIST Inputs: {ch.ristInput.length}</div>
+                            <div>RIST Outputs: {ch.ristOutput.length}</div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                          <div>RTP Inputs: {ch.rtpInput.length}</div>
-                          <div>RTP Outputs: {ch.rtpOutput.length}</div>
-                          <div>RIST Inputs: {ch.ristInput.length}</div>
-                          <div>RIST Outputs: {ch.ristOutput.length}</div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No channel statistics available</p>
@@ -141,15 +169,17 @@ export function Dashboard() {
                       <div key={t.tunnelId} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Tunnel {t.tunnelId}</span>
+                          <BitRatePair
+                            inBitsPerSecond={t.rxBitsPerSecond}
+                            outBitsPerSecond={t.txBitsPerSecond}
+                            compact
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{t.remoteEndpoint}</span>
                           <Badge variant={t.status === "connected" ? "default" : "secondary"}>
                             {t.status}
                           </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                          <div>Remote: {t.remoteEndpoint}</div>
-                          <div>RX: {(t.rxBitsPerSecond / 1000000).toFixed(2)} Mbps</div>
-                          <div>TX: {(t.txBitsPerSecond / 1000000).toFixed(2)} Mbps</div>
-                          <div>Packets: {t.rx.packets} / {t.tx.packets}</div>
                         </div>
                       </div>
                     ))}
@@ -175,25 +205,36 @@ export function Dashboard() {
             </p>
           ) : (
             <div className="space-y-3">
-              {channels.map((channel) => (
-                <div
-                  key={channel.channelId}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div>
-                    <div className="font-medium">
-                      Channel {channel.channelId}: {channel.description}
+              {channels.map((channel) => {
+                const chBitrates = getChannelBitrates(channel.channelId);
+                return (
+                  <div
+                    key={channel.channelId}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div>
+                      <div className="font-medium">
+                        Channel {channel.channelId}: {channel.description}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Buffer: {channel.bufferDurationMs}ms |{" "}
+                        {channel.inputs.length} input(s), {channel.outputs.length} output(s)
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Buffer: {channel.bufferDurationMs}ms |{" "}
-                      {channel.inputs.length} input(s), {channel.outputs.length} output(s)
-                    </div>
+                    {isRunning && chBitrates ? (
+                      <BitRatePair
+                        inBitsPerSecond={chBitrates.inputBps}
+                        outBitsPerSecond={chBitrates.outputBps}
+                        compact
+                      />
+                    ) : (
+                      <Badge variant="outline">
+                        {channel.inputs.length > 0 ? "Configured" : "No inputs"}
+                      </Badge>
+                    )}
                   </div>
-                  <Badge variant="outline">
-                    {channel.inputs.length > 0 ? "Configured" : "No inputs"}
-                  </Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

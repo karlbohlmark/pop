@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { BitRatePair } from "@/components/ui/bitrate";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
 import type { Tunnel } from "@/lib/types";
+import { useStatistics } from "@/hooks/useStatistics";
 
 interface TunnelCardProps {
   tunnel: Tunnel;
@@ -23,6 +25,9 @@ interface TunnelCardProps {
 export function TunnelCard({ tunnel, onDelete }: TunnelCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const { statistics } = useStatistics();
+  const tunnelStats = statistics?.tunnels.find((t) => t.tunnelId === tunnel.tunnelId);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -43,9 +48,18 @@ export function TunnelCard({ tunnel, onDelete }: TunnelCardProps) {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                {tunnel.authentication === "keepAlive" ? "Keep Alive" : "No Auth"}
-              </Badge>
+              {tunnelStats && (tunnelStats.rxBitsPerSecond > 0 || tunnelStats.txBitsPerSecond > 0) ? (
+                <BitRatePair
+                  inBitsPerSecond={tunnelStats.rxBitsPerSecond}
+                  outBitsPerSecond={tunnelStats.txBitsPerSecond}
+                  compact
+                  className="text-sm"
+                />
+              ) : (
+                <Badge variant="outline">
+                  {tunnel.authentication === "keepAlive" ? "Keep Alive" : "No Auth"}
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
