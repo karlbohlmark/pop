@@ -1,0 +1,11 @@
+{
+  "name": "build",
+  "triggers": {
+    "push": { "branches": ["main"] },
+    "manual": true
+  },
+  "steps": [
+    { "name": "install", "run": "bun install" },
+    { "name": "build", "run": "bun run build" }
+  ]
+}
