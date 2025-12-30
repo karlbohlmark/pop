@@ -310,7 +310,13 @@ class ZtvProcessManager {
 
   async addTunnel(params: TunnelCreateParams): Promise<void> {
     const client = this.getClient();
-    await client.addTunnelClient(params);
+    const { mode, ...rpcParams } = params;
+
+    if (mode === "server") {
+      await client.addTunnelServer(rpcParams);
+    } else {
+      await client.addTunnelClient(rpcParams);
+    }
 
     const tunnel: Tunnel = { ...params };
     this.state.tunnels.set(params.tunnelId, tunnel);

@@ -237,8 +237,12 @@ export class JsonRpcClient {
   // Tunnel Methods
   // ============================================
 
-  async addTunnelClient(params: TunnelCreateParams): Promise<{ status: string }> {
+  async addTunnelClient(params: Omit<TunnelCreateParams, "mode">): Promise<{ status: string }> {
     return this.call("addTunnelClient", params);
+  }
+
+  async addTunnelServer(params: Omit<TunnelCreateParams, "mode">): Promise<{ status: string }> {
+    return this.call("addTunnelServer", params);
   }
 
   async removeTunnel(tunnelId: number): Promise<{ status: string }> {

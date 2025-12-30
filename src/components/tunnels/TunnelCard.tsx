@@ -42,9 +42,16 @@ export function TunnelCard({ tunnel, onDelete }: TunnelCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Tunnel {tunnel.tunnelId}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Tunnel {tunnel.tunnelId}</CardTitle>
+                <Badge variant={tunnel.mode === "server" ? "default" : "secondary"}>
+                  {tunnel.mode === "server" ? "Server" : "Client"}
+                </Badge>
+              </div>
               <CardDescription>
-                {tunnel.localIp}:{tunnel.localPort} → {tunnel.remoteIp}:{tunnel.remotePort}
+                {tunnel.mode === "server"
+                  ? `Listening on ${tunnel.localIp}:${tunnel.localPort}`
+                  : `${tunnel.localIp}:${tunnel.localPort} → ${tunnel.remoteIp}:${tunnel.remotePort}`}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -74,24 +81,28 @@ export function TunnelCard({ tunnel, onDelete }: TunnelCardProps) {
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Local Endpoint:</span>
+              <span className="text-muted-foreground">
+                {tunnel.mode === "server" ? "Listen Address:" : "Local Endpoint:"}
+              </span>
               <p className="font-medium">{tunnel.localIp}:{tunnel.localPort}</p>
             </div>
+            {tunnel.mode === "client" && (
+              <div>
+                <span className="text-muted-foreground">Remote Endpoint:</span>
+                <p className="font-medium">{tunnel.remoteIp}:{tunnel.remotePort}</p>
+              </div>
+            )}
             <div>
-              <span className="text-muted-foreground">Remote Endpoint:</span>
-              <p className="font-medium">{tunnel.remoteIp}:{tunnel.remotePort}</p>
+              <span className="text-muted-foreground">Authentication:</span>
+              <p className="font-medium">{tunnel.authentication}</p>
             </div>
-            <div>
+            <div className={tunnel.mode === "server" ? "" : "col-span-2"}>
               <span className="text-muted-foreground">Secret:</span>
               <p className="font-mono text-xs">
                 {tunnel.secret.length > 16
                   ? `${tunnel.secret.slice(0, 8)}...${tunnel.secret.slice(-8)}`
                   : tunnel.secret}
               </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Authentication:</span>
-              <p className="font-medium">{tunnel.authentication}</p>
             </div>
           </div>
         </CardContent>

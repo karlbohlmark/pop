@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { TunnelCreateParams, TunnelAuthentication } from "@/lib/types";
+import type { TunnelCreateParams, TunnelAuthentication, TunnelMode } from "@/lib/types";
 
 interface TunnelFormProps {
   open: boolean;
@@ -27,6 +27,7 @@ interface TunnelFormProps {
 
 export function TunnelForm({ open, onOpenChange, onSubmit }: TunnelFormProps) {
   const [tunnelId, setTunnelId] = useState("");
+  const [mode, setMode] = useState<TunnelMode>("client");
   const [localIp, setLocalIp] = useState("0.0.0.0");
   const [localPort, setLocalPort] = useState("20001");
   const [remoteIp, setRemoteIp] = useState("");
@@ -43,10 +44,11 @@ export function TunnelForm({ open, onOpenChange, onSubmit }: TunnelFormProps) {
 
     const result = await onSubmit({
       tunnelId: parseInt(tunnelId),
+      mode,
       localIp,
       localPort: parseInt(localPort),
-      remoteIp,
-      remotePort: parseInt(remotePort),
+      remoteIp: mode === "server" ? "" : remoteIp,
+      remotePort: mode === "server" ? 0 : parseInt(remotePort),
       secret,
       authentication,
     });
@@ -55,6 +57,7 @@ export function TunnelForm({ open, onOpenChange, onSubmit }: TunnelFormProps) {
 
     if (result.success) {
       setTunnelId("");
+      setMode("client");
       setLocalIp("0.0.0.0");
       setLocalPort("20001");
       setRemoteIp("");
@@ -73,22 +76,36 @@ export function TunnelForm({ open, onOpenChange, onSubmit }: TunnelFormProps) {
         <DialogHeader>
           <DialogTitle>Create Tunnel</DialogTitle>
           <DialogDescription>
-            Add a new RIST tunnel client connection.
+            Add a new RIST tunnel connection.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tunnelId">Tunnel ID</Label>
-            <Input
-              id="tunnelId"
-              type="number"
-              value={tunnelId}
-              onChange={(e) => setTunnelId(e.target.value)}
-              placeholder="e.g., 1"
-              min="0"
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tunnelId">Tunnel ID</Label>
+              <Input
+                id="tunnelId"
+                type="number"
+                value={tunnelId}
+                onChange={(e) => setTunnelId(e.target.value)}
+                placeholder="e.g., 1"
+                min="0"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mode">Mode</Label>
+              <Select value={mode} onValueChange={(v) => setMode(v as TunnelMode)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="server">Server</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -116,30 +133,32 @@ export function TunnelForm({ open, onOpenChange, onSubmit }: TunnelFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="remoteIp">Remote IP</Label>
-              <Input
-                id="remoteIp"
-                value={remoteIp}
-                onChange={(e) => setRemoteIp(e.target.value)}
-                placeholder="e.g., 10.0.0.21"
-                required
-              />
+          {mode === "client" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="remoteIp">Remote IP</Label>
+                <Input
+                  id="remoteIp"
+                  value={remoteIp}
+                  onChange={(e) => setRemoteIp(e.target.value)}
+                  placeholder="e.g., 10.0.0.21"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="remotePort">Remote Port</Label>
+                <Input
+                  id="remotePort"
+                  type="number"
+                  value={remotePort}
+                  onChange={(e) => setRemotePort(e.target.value)}
+                  min="1"
+                  max="65535"
+                  required
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="remotePort">Remote Port</Label>
-              <Input
-                id="remotePort"
-                type="number"
-                value={remotePort}
-                onChange={(e) => setRemotePort(e.target.value)}
-                min="1"
-                max="65535"
-                required
-              />
-            </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="secret">Secret (hex)</Label>

@@ -176,9 +176,11 @@ export type OutputStream =
 // ============================================
 
 export type TunnelAuthentication = "none" | "keepAlive";
+export type TunnelMode = "client" | "server";
 
 export interface Tunnel {
   tunnelId: number;
+  mode: TunnelMode;
   localIp: string;
   localPort: number;
   remoteIp: string;
@@ -189,6 +191,7 @@ export interface Tunnel {
 
 export interface TunnelCreateParams {
   tunnelId: number;
+  mode: TunnelMode;
   localIp: string;
   localPort: number;
   remoteIp: string;
