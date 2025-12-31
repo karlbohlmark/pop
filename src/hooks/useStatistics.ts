@@ -69,8 +69,9 @@ function calculateChannelBitrates(
     const outputBitrates: StreamBitrate[] = [];
 
     // Calculate input bitrates (RTP + RIST inputs)
-    for (const input of [...ch.rtpInput, ...ch.ristInput]) {
-      const currentBytes = input.bytesReceived;
+    const allInputs = [...(ch.rtpInput ?? []), ...(ch.ristInput ?? [])];
+    for (const input of allInputs) {
+      const currentBytes = input.bytesReceived ?? 0;
       const prevBytes = prevCh?.inputs.get(input.streamId) ?? currentBytes;
       const bytesDelta = currentBytes - prevBytes;
       const bps = Math.max(0, (bytesDelta * 8) / timeDeltaSeconds);
@@ -80,8 +81,9 @@ function calculateChannelBitrates(
     }
 
     // Calculate output bitrates (RTP + RIST outputs)
-    for (const output of [...ch.rtpOutput, ...ch.ristOutput]) {
-      const currentBytes = output.bytesSent;
+    const allOutputs = [...(ch.rtpOutput ?? []), ...(ch.ristOutput ?? [])];
+    for (const output of allOutputs) {
+      const currentBytes = output.bytesSent ?? 0;
       const prevBytes = prevCh?.outputs.get(output.streamId) ?? currentBytes;
       const bytesDelta = currentBytes - prevBytes;
       const bps = Math.max(0, (bytesDelta * 8) / timeDeltaSeconds);
@@ -114,11 +116,11 @@ function buildPreviousStats(stats: Statistics, timestamp: number): PreviousStats
     const inputs = new Map<number, number>();
     const outputs = new Map<number, number>();
 
-    for (const input of [...ch.rtpInput, ...ch.ristInput]) {
-      inputs.set(input.streamId, input.bytesReceived);
+    for (const input of [...(ch.rtpInput ?? []), ...(ch.ristInput ?? [])]) {
+      inputs.set(input.streamId, input.bytesReceived ?? 0);
     }
-    for (const output of [...ch.rtpOutput, ...ch.ristOutput]) {
-      outputs.set(output.streamId, output.bytesSent);
+    for (const output of [...(ch.rtpOutput ?? []), ...(ch.ristOutput ?? [])]) {
+      outputs.set(output.streamId, output.bytesSent ?? 0);
     }
 
     channels.set(ch.channelId, { inputs, outputs });

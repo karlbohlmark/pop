@@ -31,6 +31,11 @@ class ZtvProcessManager {
     loggingLevel: "debug",
   };
 
+  // Debug: store last raw statistics responses
+  private lastRawStatistics: unknown = null;
+  private lastRawDeltaStatistics: unknown = null;
+  private lastStatisticsTimestamp: Date | null = null;
+
   async start(ztvPath?: string): Promise<void> {
     if (this.process && !this.process.killed) {
       throw new Error("ZTV process is already running");
@@ -337,12 +342,40 @@ class ZtvProcessManager {
 
   async getStatistics(): Promise<Statistics> {
     const client = this.getClient();
-    return client.statistics();
+    const result = await client.statistics();
+    this.lastRawStatistics = result;
+    this.lastStatisticsTimestamp = new Date();
+    return result;
   }
 
   async getDeltaStatistics(): Promise<DeltaStatistics> {
     const client = this.getClient();
-    return client.deltaStatistics();
+    const result = await client.deltaStatistics();
+    this.lastRawDeltaStatistics = result;
+    return result;
+  }
+
+  // Debug: get last raw statistics for troubleshooting
+  getDebugInfo(): {
+    lastRawStatistics: unknown;
+    lastRawDeltaStatistics: unknown;
+    lastStatisticsTimestamp: Date | null;
+    processRunning: boolean;
+    pid: number | null;
+    startedAt: Date | null;
+    stateChannelCount: number;
+    stateTunnelCount: number;
+  } {
+    return {
+      lastRawStatistics: this.lastRawStatistics,
+      lastRawDeltaStatistics: this.lastRawDeltaStatistics,
+      lastStatisticsTimestamp: this.lastStatisticsTimestamp,
+      processRunning: this.isRunning(),
+      pid: this.getPid(),
+      startedAt: this.startedAt,
+      stateChannelCount: this.state.channels.size,
+      stateTunnelCount: this.state.tunnels.size,
+    };
   }
 
   async listSdiDevices(): Promise<SdiDevice[]> {

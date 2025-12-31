@@ -296,6 +296,13 @@ const server = serve({
       },
     },
 
+    "/api/monitoring/debug": {
+      GET() {
+        const debugInfo = ztvManager.getDebugInfo();
+        return success(debugInfo);
+      },
+    },
+
     // ============================================
     // Configuration Persistence
     // ============================================
