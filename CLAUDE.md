@@ -1,3 +1,45 @@
+# vpod Project
+
+vpod is a web-based control panel for ZTV (Zig Video Transport), a high-performance video streaming system.
+
+## Architecture
+
+- **vpod** (TypeScript/Bun): Web UI and REST API for managing ZTV
+- **ZTV** (Zig): Video transport process in `../ztv/` - handles RTP/RIST streaming, tunnels, and io_uring-based I/O
+- Communication: JSON-RPC over stdin/stdout between vpod and ZTV
+
+### Key Files
+- `src/lib/ztv-process.ts` - Spawns and manages ZTV process, handles JSON-RPC
+- `src/lib/json-rpc-client.ts` - JSON-RPC client for ZTV communication
+- `src/lib/types.ts` - TypeScript types for channels, tunnels, statistics
+- `src/hooks/useStatistics.ts` - React hook for real-time bitrate calculation
+
+### ZTV (in ../ztv/)
+- `src/main.zig` - Main thread, command handling, ID translation
+- `src/worker/worker.zig` - Worker thread, io_uring event loop
+- `src/worker/rtp.zig` - RTP channel implementation, packet processing
+- Build with: `cd ../ztv && zig build`
+
+## Important Concepts
+
+### Channels & Streams
+- Channels contain inputs and outputs (streams)
+- Stream IDs must be unique within a channel
+- External stream IDs (API) are mapped to internal indices in ZTV
+
+### Tunnels
+- RIST tunnels provide secure transport between machines
+- Client mode: connects to remote server
+- Server mode: listens for incoming connections
+- Tunnels and channels must be on the same worker thread for RIST I/O to work
+- vpod starts ZTV with `--workers 1` to ensure this
+
+### Statistics
+- ZTV reports raw packet/byte counts
+- vpod calculates bitrates from deltas between samples
+- Debug endpoint: `/api/monitoring/debug` exposes raw ZTV statistics
+
+## Development
 
 Default to using Bun instead of Node.js.
 
@@ -104,3 +146,19 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+## Load Testing
+
+Scripts in `scripts/` for testing tunnel bandwidth:
+- `bun scripts/load-test.ts --channels N` - Create N channels with RTP generators and RIST outputs
+- `bun scripts/load-test.ts --cleanup` - Remove test channels and tunnels
+- `bun scripts/load-test-monitor.ts` - Real-time monitoring of tunnel statistics
+
+## Debugging
+
+- Check raw ZTV statistics: `curl http://localhost:3004/api/monitoring/debug | jq`
+- ZTV logs to stderr with timestamps
+- Common issues:
+  - Tunnels/channels on different workers → use `--workers 1`
+  - Stream ID conflicts → ensure unique IDs within channel
+  - RIST through tunnels → packets must flow through tunnel, not direct sockets
