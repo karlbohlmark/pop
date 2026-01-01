@@ -18,11 +18,18 @@ export interface ChannelStreamBitrates {
   outputs: StreamBitrate[];
 }
 
+export interface TunnelBitrates {
+  tunnelId: number;
+  rxBitsPerSecond: number;
+  txBitsPerSecond: number;
+}
+
 export interface SystemBitrates {
   totalInputBps: number;
   totalOutputBps: number;
   channels: ChannelBitrates[];
   channelStreams: ChannelStreamBitrates[];
+  tunnels: TunnelBitrates[];
 }
 
 interface PreviousStats {
@@ -31,6 +38,7 @@ interface PreviousStats {
     inputs: Map<number, number>; // streamId -> bytes
     outputs: Map<number, number>;
   }>;
+  tunnels: Map<number, { rxBytes: number; txBytes: number }>;
 }
 
 function calculateChannelBitrates(
@@ -43,6 +51,7 @@ function calculateChannelBitrates(
     totalOutputBps: 0,
     channels: [],
     channelStreams: [],
+    tunnels: [],
   };
 
   if (!previous) {
@@ -54,6 +63,9 @@ function calculateChannelBitrates(
         inputs: [],
         outputs: [],
       });
+    }
+    for (const t of current.tunnels ?? []) {
+      result.tunnels.push({ tunnelId: t.tunnelId, rxBitsPerSecond: 0, txBitsPerSecond: 0 });
     }
     return result;
   }
@@ -106,6 +118,24 @@ function calculateChannelBitrates(
     result.totalOutputBps += channelOutputBps;
   }
 
+  // Calculate tunnel bitrates
+  for (const t of current.tunnels ?? []) {
+    const prevTunnel = previous.tunnels.get(t.tunnelId);
+    const currentRxBytes = t.rx?.bytes ?? 0;
+    const currentTxBytes = t.tx?.bytes ?? 0;
+    const prevRxBytes = prevTunnel?.rxBytes ?? currentRxBytes;
+    const prevTxBytes = prevTunnel?.txBytes ?? currentTxBytes;
+
+    const rxBytesDelta = currentRxBytes - prevRxBytes;
+    const txBytesDelta = currentTxBytes - prevTxBytes;
+
+    result.tunnels.push({
+      tunnelId: t.tunnelId,
+      rxBitsPerSecond: Math.max(0, (rxBytesDelta * 8) / timeDeltaSeconds),
+      txBitsPerSecond: Math.max(0, (txBytesDelta * 8) / timeDeltaSeconds),
+    });
+  }
+
   return result;
 }
 
@@ -126,7 +156,15 @@ function buildPreviousStats(stats: Statistics, timestamp: number): PreviousStats
     channels.set(ch.channelId, { inputs, outputs });
   }
 
-  return { timestamp, channels };
+  const tunnels = new Map<number, { rxBytes: number; txBytes: number }>();
+  for (const t of stats.tunnels ?? []) {
+    tunnels.set(t.tunnelId, {
+      rxBytes: t.rx?.bytes ?? 0,
+      txBytes: t.tx?.bytes ?? 0,
+    });
+  }
+
+  return { timestamp, channels, tunnels };
 }
 
 export function useStatistics(pollInterval = 1000) {

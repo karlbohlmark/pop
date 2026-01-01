@@ -20,6 +20,11 @@ export function Dashboard() {
     return bitrates?.channels.find((c) => c.channelId === channelId);
   };
 
+  // Helper to get tunnel bitrates
+  const getTunnelBitrates = (tunnelId: number) => {
+    return bitrates?.tunnels?.find((t) => t.tunnelId === tunnelId);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -165,24 +170,21 @@ export function Dashboard() {
                   <p className="text-sm text-muted-foreground">Loading...</p>
                 ) : statistics?.tunnels && statistics.tunnels.length > 0 ? (
                   <div className="space-y-4">
-                    {statistics.tunnels.map((t) => (
-                      <div key={t.tunnelId} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Tunnel {t.tunnelId}</span>
-                          <BitRatePair
-                            inBitsPerSecond={t.rxBitsPerSecond}
-                            outBitsPerSecond={t.txBitsPerSecond}
-                            compact
-                          />
+                    {statistics.tunnels.map((t) => {
+                      const tunnelBitrates = getTunnelBitrates(t.tunnelId);
+                      return (
+                        <div key={t.tunnelId} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">Tunnel {t.tunnelId}</span>
+                            <BitRatePair
+                              inBitsPerSecond={tunnelBitrates?.rxBitsPerSecond ?? 0}
+                              outBitsPerSecond={tunnelBitrates?.txBitsPerSecond ?? 0}
+                              compact
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">{t.remoteEndpoint}</span>
-                          <Badge variant={t.status === "connected" ? "default" : "secondary"}>
-                            {t.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No tunnel statistics available</p>
